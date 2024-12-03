@@ -5,3 +5,5 @@
 **.pkf
 
 pretrained_vr/config.yaml
+exp/**
+!exp/gitkeep
