@@ -6,9 +6,10 @@ import numpy as np
 import soundfile as sf
 import torch
 import yaml
-from lib.nets import CascadedNet
-from slicer import Slicer
 from tqdm import tqdm
+
+from .lib.nets import CascadedNet
+from .slicer import Slicer
 
 
 class DotDict(dict):

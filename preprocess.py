@@ -6,12 +6,14 @@ import librosa
 import numpy as np
 import parselmouth
 import pyworld as pw
+import soundfile as sf
 import torch
 from tqdm import tqdm
 
 from ddsp.vocoder import Audio2Mel
 from logger import utils
 from logger.utils import traverse_dir
+from vocal_remover.inference import load_sep_model, split
 
 
 def parse_args(args=None, namespace=None):
@@ -25,11 +27,13 @@ def parse_args(args=None, namespace=None):
 
 def preprocess(
     path_srcdir,
+    path_harmonicdir,
     path_meldir,
     path_f0dir,
     path_uvdir,
     path_skipdir,
     device,
+    harmonic_extractor_dir,
     f0_extractor,
     f0_min,
     f0_max,
@@ -48,6 +52,8 @@ def preprocess(
     )
 
     # initilize extractor
+    harmonic_model, harmonic_model_args = load_sep_model(harmonic_extractor_dir, device)
+
     mel_extractor = Audio2Mel(
         hop_length=hop_length,
         sampling_rate=sampling_rate,
@@ -73,6 +79,16 @@ def preprocess(
         x, _ = librosa.load(path_srcfile, sr=sampling_rate)
         x_t = torch.from_numpy(x).float().to(device)
         x_t = x_t.unsqueeze(0).unsqueeze(0)  # (T,) --> (1, 1, T)
+
+        # extract harmonic
+        harmonic = np.zeros(0)
+        segments = split(np.asarray([x]), sampling_rate)
+        with torch.no_grad():
+            for segment in segments:
+                seg_input = torch.from_numpy(segment).float().unsqueeze(0).to(device)
+                seg_output = harmonic_model.predict_fromaudio(seg_input)
+                seg_output = seg_output.cpu().numpy()
+                harmonic = np.append(harmonic, seg_output)
 
         # extract mel
         m_t = mel_extractor(x_t)
@@ -128,6 +144,9 @@ def preprocess(
             uv = uv.astype("float")
             uv = np.min(np.array([uv[:-2], uv[1:-1], uv[2:]]), axis=0)
             uv = np.pad(uv, (1, 1), constant_values=(uv[0], uv[-1]))
+            # save harmonic
+            os.makedirs(path_harmonicdir, exist_ok=True)
+            sf.write(os.path.join(path_harmonicdir, file), harmonic, sampling_rate)
             # save npy
             os.makedirs(os.path.dirname(path_melfile), exist_ok=True)
             np.save(path_melfile, mel)
@@ -162,6 +181,7 @@ if __name__ == "__main__":
 
     # load config
     args = utils.load_config(cmd.config)
+    harmonic_extractor_dir = args.data.vr_model_dir
     f0_extractor = args.data.f0_extractor
     f0_min = args.data.f0_min
     f0_max = args.data.f0_max
@@ -176,19 +196,22 @@ if __name__ == "__main__":
     valid_path = args.data.valid_path
 
     # run
-    for path in [train_path, valid_path]:
-        path_srcdir = os.path.join(path, "audio")
+    for path in [valid_path, train_path]:
+        path_srcdir = os.path.join(path, "raw")
+        path_harmonicdir = os.path.join(path, "audio")
         path_meldir = os.path.join(path, "mel")
         path_f0dir = os.path.join(path, "f0")
         path_uvdir = os.path.join(path, "uv")
         path_skipdir = os.path.join(path, "skip")
         preprocess(
             path_srcdir,
+            path_harmonicdir,
             path_meldir,
             path_f0dir,
             path_uvdir,
             path_skipdir,
             device,
+            harmonic_extractor_dir,
             f0_extractor,
             f0_min,
             f0_max,

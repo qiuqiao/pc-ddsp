@@ -28,7 +28,7 @@ UPDATE: python 3.8 (windows) + cuda 11.8 + torch 2.0.0 + torchaudio 2.0.1 works,
 
 ## 2. Preprocessing
 
-Put all the training dataset (.wav format audio clips) in the below directory: `data/train/audio`. Put all the validation dataset (.wav format audio clips) in the below directory: `data/val/audio`. Then run
+Put all the training dataset (.wav format audio clips) in the below directory: `data/train/raw`. Put all the validation dataset (.wav format audio clips) in the below directory: `data/val/raw`. Then run
 
 ```bash
 python preprocess.py -c configs/combsub.yaml

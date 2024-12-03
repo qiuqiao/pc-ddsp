@@ -1,0 +1,7 @@
+**.wav
+**.npy
+**.pt
+**.pyc
+**.pkf
+
+pretrained_vr/config.yaml

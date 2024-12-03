@@ -1,4 +1,5 @@
 data:
+  vr_model_dir: pretrained_vr/model.pt
   f0_extractor: 'parselmouth' # 'parselmouth' (singing) or 'dio' (speech) or 'harvest' (speech)
   f0_min: 65 # about C2
   f0_max: 800 # about G5
